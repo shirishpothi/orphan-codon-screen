@@ -43,11 +43,38 @@ python scripts/pipeline.py data/genus_sample.tsv 0 1 out sprot
 python scripts/merge.py data/genus_sample.tsv out merged
 ```
 
-## Validation so far
+## Results (GTDB r232, full run, 17 Nov 2026)
 
-- **Positive control.** The blind screen recovers TANB77 CGG skipping without being pointed at it: CGG is orphaned in every sampled TANB77 genus, and in the validated genomes 23–84 of their +1 frameshifts fall at CGG, with glycine in the homolog at most of those sites.
-- **Negative controls.** Normal Clostridia show 13–45 scattered +1 frameshifts with no codon preference.
-- **Known caveat.** Most orphan codons are read as their usual amino acid, which means a tRNA was missed by the assembly or by ARAGORN. ARAGORN does not detect intron-containing archaeal tRNAs, so archaeal Cys orphans are suspect.
+28,338 of 28,344 genera were scanned (6 downloads failed). 7,364 genomes had an orphan codon and went through frameshift alignment. Tables are in `findings/`.
+
+**1. TANB77 is the only lineage that skips at an orphan codon.** All 32 orphan-codon frameshift hotspots are TANB77 CGG. The blind screen reproduces the published numbers closely:
+
+| | This screen | Published |
+|---|---|---|
+| TANB77 genera with no CGG-reading tRNA | 50 of 52 | 54 of 64 |
+| +1 frameshifts at CGG | 1,020 of 1,953 (52%), in 40 genomes | 1,026 of 1,744 (59%) |
+| Homolog has glycine at the CGG skip site | 897 of 1,020 (88%) | 1,237 of 1,458 |
+| Glycine at other +1 frameshifts | 49 of 933 (5%) | 6% |
+
+**2. Within TANB77, keeping the tRNA means not skipping.** The two TANB77 genera that still carry tRNA-Arg-CCG are both in family RGIG9151 (*RGIG3495* and *RGIG9151*). Neither has a single +1 frameshift at CGG (0 of 12 and 0 of 9). This suggests RGIG9151 branched off before the tRNA loss, and that skipping tracks the loss.
+
+**3. Losing a tRNA almost never leads to skipping.** In the other 7,321 genomes with an orphan codon, 3,000 of 284,125 +1 frameshifts (1.1%) fall at an orphan codon. That is no more than chance for 1–4 codons out of 61. Their homologs show the codon's usual amino acid (e.g., CCA→Pro 82% in Oscillospirales, TTA→Leu 74% in Burkholderiales). So these orphans are mostly tRNAs that the assembly or ARAGORN missed, not new decoding.
+
+**4. CGG has repeatedly lost its tRNA in Mollicutes-related Bacilli_A, without skipping:**
+
+| Order | Genera with no CGG-reading tRNA | +1 frameshifts at CGG |
+|---|---|---|
+| RF39 | 82 of 142 | 3 of 383 |
+| Mycoplasmatales | 32 of 44 | 0 of 184 |
+| MAG-NZ | 4 of 4 | — |
+| JAJDGJ01 | 3 of 3 | — |
+| UBA3375 | 3 of 3 | — |
+
+CGG is very rare in these genomes (~0.1–0.3 per 1,000 codons). This matches the known unassigned, avoided CGG of *Mycoplasma capricolum*, extended to RF39 and three uncultured orders.
+
+**5. The only hotspot not at an orphan codon is an artifact.** In *Virgibacillus alimentarius* (RS_GCF_000709085.1, a 146-contig assembly), 22 of 55 +1 frameshifts sit at AAA, and 21 of those 22 are inside runs of five or more A's. That is homopolymer sequencing error.
+
+**Controls.** Normal Clostridia show 13–45 scattered +1 frameshifts with no codon preference. ARAGORN does not detect intron-containing archaeal tRNAs, so the archaeal Cys orphans (Sulfolobales and others) in `lineage.tsv` are probably artifacts.
 
 ## Limitations
 
