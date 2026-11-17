@@ -1,0 +1,78 @@
+name: orphan-codon screen
+
+on:
+  workflow_dispatch:
+    inputs:
+      shards:
+        description: Number of shards
+        default: "60"
+
+env:
+  DIAMOND_VERSION: v2.2.9
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - name: Download Swiss-Prot
+        run: curl -sSf --retry 5 -O https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sprot
+          path: uniprot_sprot.fasta.gz
+          retention-days: 3
+      - id: m
+        run: echo "matrix=$(python3 -c "import json;print(json.dumps(list(range(${{ inputs.shards }}))))")" >> "$GITHUB_OUTPUT"
+
+  shard:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        shard: ${{ fromJson(needs.setup.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Install DIAMOND
+        run: |
+          curl -sSfL https://github.com/bbuchfink/diamond/releases/download/${DIAMOND_VERSION}/diamond-linux64.tar.gz | tar xz
+          sudo mv diamond /usr/local/bin/
+      - uses: actions/download-artifact@v4
+        with:
+          name: sprot
+      - run: diamond makedb --in uniprot_sprot.fasta.gz -d sprot --quiet
+      - name: Run shard
+        run: python scripts/pipeline.py data/genus_sample.tsv ${{ matrix.shard }} ${{ inputs.shards }} out sprot
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shard-${{ matrix.shard }}
+          path: out/
+          retention-days: 14
+
+  merge:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: shard-*
+          path: results
+      - run: python3 scripts/merge.py data/genus_sample.tsv results merged
+      - run: cat merged/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: merged
+          path: merged/
+          retention-days: 30

@@ -1,0 +1,2 @@
+pyrodigal==3.7.1
+pyaragorn==0.3.0
