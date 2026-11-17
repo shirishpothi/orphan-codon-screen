@@ -6,6 +6,12 @@ on:
       shards:
         description: Number of shards
         default: "60"
+      sample:
+        description: Sample file
+        default: data/genus_sample.tsv
+      validate_all:
+        description: Align every genome, not only orphan-codon genomes ("1" to enable)
+        default: "0"
 
 env:
   DIAMOND_VERSION: v2.2.9
@@ -51,7 +57,9 @@ jobs:
           name: sprot
       - run: diamond makedb --in uniprot_sprot.fasta.gz -d sprot --quiet
       - name: Run shard
-        run: python scripts/pipeline.py data/genus_sample.tsv ${{ matrix.shard }} ${{ inputs.shards }} out sprot
+        env:
+          VALIDATE_ALL: ${{ inputs.validate_all }}
+        run: python scripts/pipeline.py ${{ inputs.sample }} ${{ matrix.shard }} ${{ inputs.shards }} out sprot
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -69,7 +77,7 @@ jobs:
         with:
           pattern: shard-*
           path: results
-      - run: python3 scripts/merge.py data/genus_sample.tsv results merged
+      - run: python3 scripts/merge.py ${{ inputs.sample }} results merged
       - run: cat merged/summary.md >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         with:

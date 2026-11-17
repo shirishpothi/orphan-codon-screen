@@ -8,6 +8,8 @@ For each genome in the shard:
      where the +1/-1 frameshifts fall and what the homologs have at the orphan codon.
 
 usage: pipeline.py SAMPLE.tsv SHARD NSHARDS OUTDIR DIAMOND_DB
+Set VALIDATE_ALL=1 to align every genome (not only those with an orphan codon);
+CGG is then always reported in 'orph', whether or not a tRNA reads it.
 """
 import sys, os, re, json, gzip, time, tempfile, subprocess, collections, urllib.request
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
@@ -20,6 +22,7 @@ from codonaa import table
 RRN = {'ATT', 'ATC', 'GCA', 'GCG', 'GCT', 'GCC'}  # Ile-GAU / Ala-UGC sit in rRNA operons, often lost from MAGs
 SAMPLE, SHARD, NSHARDS, OUT, DB = sys.argv[1], int(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5]
 TMP = tempfile.mkdtemp()
+VALIDATE_ALL = os.environ.get('VALIDATE_ALL') == '1'
 
 
 def url_for(acc, name):
@@ -121,7 +124,12 @@ def work(args):
     try:
         d = scan(acc, fn)
         v = None
-        if sum(d['trnas'].values()) >= 25:
+        if VALIDATE_ALL:
+            tot = sum(d['codons'].values())
+            sig = [x for x in orphans(d, min_count=0) if x[0] not in RRN and x[0] != 'CGG']
+            n = d['codons'].get('CGG', 0)
+            v = validate(d, fn, sig + [('CGG', n, 1000 * n / max(1, tot))])
+        elif sum(d['trnas'].values()) >= 25:
             sig = [x for x in orphans(d, min_count=20) if x[0] not in RRN and x[2] <= 5]
             if sig and len(sig) <= 4:
                 v = validate(d, fn, sig)
