@@ -32,7 +32,7 @@ This screen inverts the search. Losing the decoding tRNA is a necessary conditio
 
 ## Running
 
-Actions → *orphan-codon screen* → Run workflow. It runs 60 shards on GitHub-hosted runners, at most 20 at once, then a merge job. Results are in the `merged` artifact and the run summary.
+Actions → *orphan-codon screen* → Run workflow. It runs 60 shards on GitHub-hosted runners, at most 20 at once, then a merge job. Results are in the `merged` artifact and the run summary. Inputs `sample` (default `data/genus_sample.tsv`) and `validate_all` (`1` aligns every genome) run other samples; the TANB77 species run used `shards=20 sample=data/tanb77_sample.tsv validate_all=1`, then `python scripts/tanb77.py data/tanb77_sample.tsv merged`.
 
 Locally:
 
@@ -56,7 +56,18 @@ python scripts/merge.py data/genus_sample.tsv out merged
 | Homolog has glycine at the CGG skip site | 897 of 1,020 (88%) | 1,237 of 1,458 |
 | Glycine at other +1 frameshifts | 49 of 933 (5%) | 6% |
 
-**2. Within TANB77, keeping the tRNA means not skipping.** The two TANB77 genera that still carry tRNA-Arg-CCG are both in family RGIG9151 (*RGIG3495* and *RGIG9151*). Neither has a single +1 frameshift at CGG (0 of 12 and 0 of 9). This suggests RGIG9151 branched off before the tRNA loss, and that skipping tracks the loss.
+**2. Within TANB77, keeping the tRNA means not skipping.** This was tested on every TANB77 species representative: 788 genomes (782 aligned), each aligned regardless of orphan status (`data/tanb77_sample.tsv`, run with `validate_all=1`; per-genome table in `findings/tanb77_cgg_by_genome.tsv`, made by `scripts/tanb77.py`).
+
+| Genomes (≥ 25 tRNAs unless noted) | +1 frameshifts at CGG | Homolog Gly at CGG shift | Gly at other +1 shifts |
+|---|---|---|---|
+| No CGG-reading tRNA: 611 genomes, 54 genera | 20,572 of 37,801 (54%) | 18,160 of 20,572 (88%) | 863 of 17,229 (5%) |
+| tRNA-Arg-CCG present: 13 genomes, any tRNA count | 2 of 137 (1.5%) | — | — |
+
+The difference is Fisher p = 3 × 10⁻⁴³. 551 of the 611 tRNA-less genomes individually pass the skipper threshold (≥ 3 CGG shifts and ≥ 20% of +1 shifts). The rest form the low tail of a continuous distribution, scattered across genera, not a separate lineage.
+
+On the GTDB r232 bac120 tree, family RGIG9151 is sister to all other TANB77 families. All 9 RGIG9151 genomes carry tRNA-Arg-CCG and together show 1 CGG shift in 114. The other four families (CAG-508, CAG-465, UBA1234, SIG350) have essentially all lost it. The simplest history is one loss of tRNA-CCG on the stem of the other four families, with skipping arising alongside it. The 4 CCG carriers outside RGIG9151 (2 in *CAG-465*, 2 in *CAG-793*) sit deep inside skipping clades and show 1 CGG shift in 23. They could be secondary regains or contamination; that is untested.
+
+Two CAG-508 genomes (*CAG-269* GCA_947573965.1, *CAG-452* GCA_944392485.1) carry a tRNA-Arg-UCG besides the usual ACG, yet skip strongly (53 of 87 and 133 of 193 +1 shifts at CGG). The generous U34 rule assumes UCG reads CGG, but here it evidently does not. Either the tRNA is inactive or modified, or it isn't the organism's own.
 
 **3. Losing a tRNA almost never leads to skipping.** In the other 7,321 genomes with an orphan codon, 3,000 of 284,125 +1 frameshifts (1.1%) fall at an orphan codon. That is no more than chance for 1–4 codons out of 61. Their homologs show the codon's usual amino acid (e.g., CCA→Pro 82% in Oscillospirales, TTA→Leu 74% in Burkholderiales). So these orphans are mostly tRNAs that the assembly or ARAGORN missed, not new decoding.
 
@@ -70,7 +81,7 @@ python scripts/merge.py data/genus_sample.tsv out merged
 | JAJDGJ01 | 3 of 3 | — |
 | UBA3375 | 3 of 3 | — |
 
-CGG is very rare in these genomes (~0.1–0.3 per 1,000 codons). This matches the known unassigned, avoided CGG of *Mycoplasma capricolum*, extended to RF39 and three uncultured orders.
+CGG is very rare in these genomes (~0.1–0.3 per 1,000 codons). This matches the known unassigned, avoided CGG of *Mycoplasma capricolum* (Oba et al. 1991, PNAS 88:921) and the absence of tRNA-Arg-CCG across Mollicutes (Yokobori et al. 2013, NAR 41:6531). This is an extension of known biology to RF39 and three uncultured orders, not a new phenomenon.
 
 **5. The only hotspot not at an orphan codon is an artifact.** In *Virgibacillus alimentarius* (RS_GCF_000709085.1, a 146-contig assembly), 22 of 55 +1 frameshifts sit at AAA, and 21 of those 22 are inside runs of five or more A's. That is homopolymer sequencing error.
 
